@@ -1,14 +1,20 @@
 package alacarte
 
-import "github.com/Masterminds/squirrel"
+import (
+	"github.com/Masterminds/squirrel"
+	"github.com/samber/lo"
+)
 
 type (
 	Q        = squirrel.SelectBuilder
 	QueryMod func(q Q, table string) Q
 )
 
-func Col(name string) QueryMod {
-	return func(q Q, table string) Q { return q.Column(TableCol(table, name)) }
+func Col(names ...string) QueryMod {
+	return func(q Q, table string) Q {
+		columns := lo.Map(names, func(col string, _ int) string { return TableCol(table, col) })
+		return q.Columns(columns...)
+	}
 }
 
 func TableCol(table, name string) string {
