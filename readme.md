@@ -140,8 +140,9 @@ Lastly the `binder` matches the slice or children to the slice of parents. Use h
 functions are actually helpers that call CreateRelation with predefined binders. The only parameter that differs is 
 `assign`, since HasMany assigns a slice and HasOne assigns a struct.
 
-> [!NOTE] The current binders are dumb and just iterate over the parent and child slices, for better performance 
-> consider creating a PR with binders that use maps :)
+> [!NOTE]
+> The current binders are dumb and just iterate over the parent and child slices, for better performance consider 
+> creating a PR with binders that use maps :)
 
 ```go
 // Signature
