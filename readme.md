@@ -123,19 +123,22 @@ and will have return closures:
 
 The `Resolve` closure can now be used to load the relation to []M parent models.
 
-The `binder` and `wherer` have helpers available. Usually you'll want to filter on child.parent_id = parent.ID. The 
-`alacarte.WhereIDs` creates this query modifier for you. You specify the child's column that referes to a parent field,
-and a function that returns said parent field from the model.
+The `binder` and `wherer` have helpers available. Usually you'll want to filter on `child.parent_id = parent.ID`. The 
+`alacarte.WhereIDs` creates this query modifier for you. You specify the child's column (e.g. `child.parent_id`) that 
+refers to a parent field (e.g. `parent.id`), and lastly a function that returns said parent's field.
 
-For example, the following adds a `WHERE <child_table>.book_id IN (?,?,?,...)`
+For example, the following adds a `WHERE comments.book_id IN (?,?,?,...)`
 
 ```go
-alacarte.WhereIDs("book_id", func(book Book) uint64 { return book.ID }),
+.AddRelation(CommentSchema,
+    //...
+    alacarte.WhereIDs("book_id", func(book Book) uint64 { return book.ID }),
+)
 ```
 
-Lastly the `binder` determines children and parents are matched, use HasMany or HasOne. These functions are actually 
-helpers for calling CreateRelation with predefined binders. The only parameter that differs is `assign`, since HasMany 
-assigns a slice and HasOne assigns a struct.
+Lastly the `binder` matches the slice or children to the slice of parents. Use helpers: `HasMany` or `HasOne`. These 
+functions are actually helpers that call CreateRelation with predefined binders. The only parameter that differs is 
+`assign`, since HasMany assigns a slice and HasOne assigns a struct.
 
 > [!NOTE] The current binders are dumb and just iterate over the parent and child slices, for better performance 
 > consider creating a PR with binders that use maps :)
