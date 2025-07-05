@@ -23,24 +23,24 @@ func HasMany[M, N any](
 	child *ModelSchema[N],
 	belongTogether func(M, N) bool,
 	assign func(*M, []N),
-	where func(parents []M) QueryMod,
+	wherer func(parents []M) QueryMod,
 ) Relation[M] {
-	return CreateRelation(child, BindBy(belongTogether, assign), where)
+	return CreateRelation(child, BindBy(belongTogether, assign), wherer)
 }
 
 func HasOne[M, N any](
 	child *ModelSchema[N],
 	belongTogether func(M, N) bool,
 	assign func(*M, N),
-	where func(parents []M) QueryMod,
+	wherer func(parents []M) QueryMod,
 ) Relation[M] {
-	return CreateRelation(child, BindByOne(belongTogether, assign), where)
+	return CreateRelation(child, BindByOne(belongTogether, assign), wherer)
 }
 
 func CreateRelation[M, N any](
 	child *ModelSchema[N],
 	binder Binder[M, N],
-	where func(parents []M) QueryMod,
+	wherer func(parents []M) QueryMod,
 ) Relation[M] {
 	return Relation[M]{
 		Check: func(field string) error {
@@ -48,7 +48,7 @@ func CreateRelation[M, N any](
 		},
 		Resolve: func(ctx context.Context, db *sql.DB, parents []M, fields []string) error {
 			children, err := child.Query(fields...).
-				ModifyQuery(where(parents)).
+				ModifyQuery(wherer(parents)).
 				Collect(ctx, db)
 			if err != nil {
 				return err

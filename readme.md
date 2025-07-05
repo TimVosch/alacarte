@@ -113,7 +113,7 @@ Creating a `Relation` requires three parameters:
 - `child *ModelSchema[N]`: the related schema
 - `binder Binder[M, N]`: a function that assigns []N childs to []M parents
     - Simple cases its looping over M and N and see if N.parent_id == M.id
-- `where func(parents []M) QueryMod`: a query modifier that adds a filter on the child query to only return rows
+- `wherer func(parents []M) QueryMod`: a query modifier that adds a filter on the child query to only return rows
     related to the parents.
 
 and will have return closures:
@@ -123,7 +123,7 @@ and will have return closures:
 
 The `Resolve` closure can now be used to load the relation to []M parent models.
 
-The binder and wherer have helpers available. Usually you'll want to filter on child.parent_id = parent.ID. The 
+The `binder` and `wherer` have helpers available. Usually you'll want to filter on child.parent_id = parent.ID. The 
 `alacarte.WhereIDs` creates this query modifier for you. You specify the child's column that referes to a parent field,
 and a function that returns said parent field from the model.
 
