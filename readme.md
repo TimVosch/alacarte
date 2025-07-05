@@ -30,12 +30,14 @@ go get pollex.nl/alacarte
 Basic example of schema creation and querying.
 
 ```go
+// Your domain model
 type Author struct {
     ID   uint64
     Name string
     Tags []string
 }
 
+// The alacarte mapper
 var AuthorSchema = alacarte.New[Author]("authors"). 
     AddSimpleField("id", func(a *Author) any { return &a.ID }).
     AddSimpleField("name", func(a *Author) any { return &a.Name }).
@@ -61,8 +63,8 @@ Basic example of a relation.
 
 ```go
 var AuthorSchema = alacarte.New[Author]("authors"). 
-    ... // Fields from example above
-	AddRelation("books",
+    // ... Fields from example above
+    AddRelation("books",
 		alacarte.HasMany(
 			BookSchema,
 			func(author Author, book Book) bool { return book.AuthorID == author.ID },
@@ -84,39 +86,40 @@ func (store *AuthorStore) List(ctx context.Context) ([]Author, error) {
 ## Advanced Usage
 
 Alacarte uses closures a lot. In simple cases this is abstracted away by helper functions such as `AddSimpleField` or 
-`alacarte.Ptr` if no post-scan action is required. 
+`alacarte.Ptr` - if no post-scan action is required. 
 
 ### Fields
 
 At the core of a ModelSchema there is a `map[string]FieldType` and a `map[string]Relation`. When querying for fields, 
-FieldTypes and Relations are collected and executed. There is a bit of logic executed upon selecting a field that
-resolves nested fields in relations and does some validation of the fields exist.
+FieldTypes and Relations are collected and executed. There is a bit of logic executed upon selecting a field which
+resolves nesting and validation.
 
-A `Field` or `FieldType` consists of three elements:
-    - A name that uniquely identifies this mapping for this model;
-        - This is only used in the ModelSchema.
-    - A QueryModifier, that modifies the query in such a way that data becomes available for scanning to the pointer 
-            in the RowScanner;
-        - This is usually just a `q.Columns(....)` which adds columns to the SELECT query, but it can be more complex
-            such as joining tables and doing something there.
-    - A RowScanner, that returns one or more pointers for each column in the QueryModifier and an `Action` that runs after scanning;
-        - This is a closure, so it's possible to scan to temporary variables and use the Action to transform it into
-            something that can be mapped to your model. See the "tags" example above.
+A `Field` or `FieldType` consists of three-ish elements:
+
+- A name that uniquely identifies this mapping for this model;
+    - This is only used in the ModelSchema. So not really a part of FieldType.
+- A QueryModifier, that modifies the query in such a way that data becomes available for scanning to the pointer 
+        in the RowScanner;
+    - This is usually just a `q.Columns(....)` which adds columns to the SELECT query, but it can be more complex
+        such as joining tables and doing something there.
+- A RowScanner, that returns one or more pointers for each column in the QueryModifier and an `Action` that runs after scanning;
+    - This is a closure, so it's possible to scan to temporary variables and use the Action to transform it into
+        something that can be mapped to your model. See the "tags" example above.
 
 ### Relations
 
 Creating a `Relation` requires three parameters:
 
-	- `child *ModelSchema[N]`: the related schema
-	- `binder Binder[M, N]`: a function that assigns []N childs to []M parents
-        - Simple cases its looping over M and N and see if N.parent_id == M.id
-	- `where func(parents []M) QueryMod`: a query modifier that adds a filter on the child query to only return rows
-        related to the parents.
+- `child *ModelSchema[N]`: the related schema
+- `binder Binder[M, N]`: a function that assigns []N childs to []M parents
+    - Simple cases its looping over M and N and see if N.parent_id == M.id
+- `where func(parents []M) QueryMod`: a query modifier that adds a filter on the child query to only return rows
+    related to the parents.
 
 and will have return closures:
 
-    - `Check(field string) error`: this validates if the given field exists on this schema. (Can be nested to relations.)
-    - `Resolve(ctx context.Context, db *sql.DB, parents []M, fields []string)`
+- `Check(field string) error`: this validates if the given field exists on this schema. (Can be nested to relations.)
+- `Resolve(ctx context.Context, db *sql.DB, parents []M, fields []string)`
 
 The `Resolve` closure can now be used to load the relation to []M parent models.
 
