@@ -2,14 +2,13 @@ package alacarte
 
 import (
 	"context"
-	"database/sql"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/samber/lo"
 )
 
 type (
-	Resolve[M any]            func(ctx context.Context, db *sql.DB, parents []M, fields []string) error
+	Resolve[M any]            func(ctx context.Context, db squirrel.BaseRunner, parents []M, fields []string) error
 	FieldCheck                func(fields string) error
 	Binder[M, N any]          func(parents []M, children []N)
 	ModelQueryModifier[M any] func(model ModelQuery[M]) ModelQuery[M]
@@ -61,7 +60,7 @@ func CreateRelation[M, N any](
 		Check: func(field string) error {
 			return child.Check(field)
 		},
-		Resolve: func(ctx context.Context, db *sql.DB, parents []M, fields []string) error {
+		Resolve: func(ctx context.Context, db squirrel.BaseRunner, parents []M, fields []string) error {
 			children, err := child.Query(fields...).
 				ModifyQuery(wherer(parents)).
 				Collect(ctx, db)

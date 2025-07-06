@@ -2,7 +2,6 @@ package alacarte
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -133,7 +132,7 @@ func (model ModelQuery[T]) Err() error {
 	return errors.Join(model.errors...)
 }
 
-func (model ModelQuery[T]) Collect(ctx context.Context, db *sql.DB) ([]T, error) {
+func (model ModelQuery[T]) Collect(ctx context.Context, db squirrel.BaseRunner) ([]T, error) {
 	if err := model.Err(); err != nil {
 		return nil, err
 	}
