@@ -3,6 +3,7 @@ package alacarte_test
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 
@@ -188,5 +189,31 @@ func TestBasicModelRelation(t *testing.T) {
 		require.NotEmpty(t, authors[0].Books[0].AuthorID)
 		require.NotEmpty(t, authors[0].Books[0].Name)
 		require.Empty(t, authors[0].Books[0].ID)
+	})
+
+	t.Run("CollectOne should return one item", func(t *testing.T) {
+		author, err := author.Query().
+			ModifyQuery(func(q alacarte.Q, table string) alacarte.Q { return q.Where("id = ?", 2) }).
+			CollectOne(context.Background(), db)
+		require.NoError(t, err)
+		assert.NotNil(t, author)
+		assert.NotEmpty(t, author.ID)
+		assert.NotEmpty(t, author.Name)
+		assert.Empty(t, author.Books)
+	})
+
+	t.Run("CollectOne should error on many returns", func(t *testing.T) {
+		author, err := author.Query().
+			CollectOne(context.Background(), db)
+		assert.ErrorIs(t, err, alacarte.ErrTooManyResults)
+		assert.Nil(t, author)
+	})
+
+	t.Run("CollectOne should error on no returns", func(t *testing.T) {
+		author, err := author.Query().
+			ModifyQuery(func(q alacarte.Q, table string) alacarte.Q { return q.Where("false") }).
+			CollectOne(context.Background(), db)
+		assert.ErrorIs(t, err, sql.ErrNoRows)
+		assert.Nil(t, author)
 	})
 }

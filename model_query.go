@@ -2,6 +2,7 @@ package alacarte
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,6 +15,8 @@ var (
 	ErrNoSuchField = errors.New("field does not exist")
 	// ErrNoSuchRelation is returned only when trying to select a nested field on a relation that does not exist.
 	ErrNoSuchRelation = errors.New("relation does not exist")
+	// ErrTooManyResults is returned when CollectOne is called but returned many models
+	ErrTooManyResults = errors.New("too many result for CollectOne")
 )
 
 type ModelQuery[T any] struct {
@@ -137,6 +140,45 @@ func (model ModelQuery[T]) Collect(ctx context.Context, db squirrel.BaseRunner) 
 		return nil, err
 	}
 
+	parents, err := model.collectBaseModels(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := model.resolveRelations(ctx, db, parents); err != nil {
+		return nil, err
+	}
+
+	return parents, nil
+}
+
+func (model ModelQuery[T]) CollectOne(ctx context.Context, db squirrel.BaseRunner) (*T, error) {
+	if err := model.Err(); err != nil {
+		return nil, err
+	}
+
+	parents, err := model.collectBaseModels(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(parents) == 0 {
+		return nil, sql.ErrNoRows
+	} else if len(parents) > 1 {
+		return nil, ErrTooManyResults
+	}
+
+	if err := model.resolveRelations(ctx, db, parents); err != nil {
+		return nil, err
+	}
+
+	return &parents[0], nil
+}
+
+func (model ModelQuery[T]) collectBaseModels(
+	ctx context.Context,
+	db squirrel.BaseRunner,
+) ([]T, error) {
 	q := squirrel.StatementBuilder.RunWith(db).Select().From(model.schema.Table)
 
 	// Apply schema mods
@@ -157,25 +199,33 @@ func (model ModelQuery[T]) Collect(ctx context.Context, db squirrel.BaseRunner) 
 	}
 
 	// Execute query
-	parents, err := Collect(q, flattenRowScan(scans))
+	parents, err := Collect(ctx, q, flattenRowScan(scans))
 	if err != nil {
 		return nil, err
 	}
 
+	return parents, nil
+}
+
+func (model ModelQuery[T]) resolveRelations(
+	ctx context.Context,
+	db squirrel.BaseRunner,
+	parents []T,
+) error {
 	// Resolve relations
 	for name, relation := range model.selectedRelations {
-		err = relation.Resolve(
+		err := relation.Resolve(
 			ctx,
 			db,
 			parents,
 			model.selectedRelationFields[name],
 		)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return parents, nil
+	return nil
 }
 
 // =================

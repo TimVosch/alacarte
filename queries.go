@@ -1,11 +1,12 @@
 package alacarte
 
 import (
+	"context"
 	"log/slog"
 )
 
-func Collect[T any](q Q, scans RowScan[T]) ([]T, error) {
-	rows, err := q.Query()
+func Collect[T any](ctx context.Context, q Q, scans RowScan[T]) ([]T, error) {
+	rows, err := q.QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
