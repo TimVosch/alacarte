@@ -9,14 +9,16 @@ import (
 )
 
 type (
-	Resolve[M any]   func(ctx context.Context, db *sql.DB, parents []M, fields []string) error
-	FieldCheck       func(fields string) error
-	Binder[M, N any] func(parents []M, children []N)
+	Resolve[M any]            func(ctx context.Context, db *sql.DB, parents []M, fields []string) error
+	FieldCheck                func(fields string) error
+	Binder[M, N any]          func(parents []M, children []N)
+	ModelQueryModifier[M any] func(model ModelQuery[M]) ModelQuery[M]
 )
 
 type Relation[M any] struct {
-	Resolve Resolve[M]
-	Check   FieldCheck
+	Resolve       Resolve[M]
+	Check         FieldCheck
+	ModelQueryMod ModelQueryModifier[M]
 }
 
 func HasMany[M, N any](
@@ -24,8 +26,14 @@ func HasMany[M, N any](
 	belongTogether func(M, N) bool,
 	assign func(*M, []N),
 	wherer func(parents []M) QueryMod,
+	depends []string,
 ) Relation[M] {
-	return CreateRelation(child, BindBy(belongTogether, assign), wherer)
+	return CreateRelation(
+		child,
+		BindBy(belongTogether, assign),
+		wherer,
+		func(model ModelQuery[M]) ModelQuery[M] { return model.Select(depends...) },
+	)
 }
 
 func HasOne[M, N any](
@@ -33,14 +41,21 @@ func HasOne[M, N any](
 	belongTogether func(M, N) bool,
 	assign func(*M, N),
 	wherer func(parents []M) QueryMod,
+	depends []string,
 ) Relation[M] {
-	return CreateRelation(child, BindByOne(belongTogether, assign), wherer)
+	return CreateRelation(
+		child,
+		BindByOne(belongTogether, assign),
+		wherer,
+		func(model ModelQuery[M]) ModelQuery[M] { return model.Select(depends...) },
+	)
 }
 
 func CreateRelation[M, N any](
 	child *ModelSchema[N],
 	binder Binder[M, N],
 	wherer func(parents []M) QueryMod,
+	depends ModelQueryModifier[M],
 ) Relation[M] {
 	return Relation[M]{
 		Check: func(field string) error {
@@ -58,6 +73,7 @@ func CreateRelation[M, N any](
 
 			return nil
 		},
+		ModelQueryMod: depends,
 	}
 }
 
@@ -117,4 +133,8 @@ func WhereIDs[M any, K any](col string, getID func(m M) K) func(parents []M) Que
 			)
 		}
 	}
+}
+
+func DependsOn(fields ...string) []string {
+	return fields
 }

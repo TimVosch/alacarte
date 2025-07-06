@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pollex.nl/alacarte"
@@ -29,6 +27,7 @@ var (
 				func(book Book, comment Comment) bool { return comment.BookID == book.ID },
 				func(book *Book, comments []Comment) { book.Comments = comments },
 				alacarte.WhereIDs("book_id", func(book Book) uint64 { return book.ID }),
+				alacarte.DependsOn("id", "comments.book_id"),
 			),
 		)
 
@@ -45,29 +44,27 @@ var (
 					t.Tags = strings.Split(tagString, ",")
 				}
 			},
-		).AddRelation("books",
-		alacarte.HasMany(book,
-			func(author Author, book Book) bool { return book.AuthorID == author.ID },
-			func(author *Author, books []Book) { author.Books = books },
-			func(authors []Author) alacarte.QueryMod {
-				return func(q alacarte.Q, table string) alacarte.Q {
-					ids := lo.Map(
-						authors,
-						func(author Author, _ int) uint64 { return author.ID },
-					)
-					return q.Where(squirrel.Eq{"books.author_id": ids})
-				}
-			},
-		),
-	)
+		).
+		AddRelation(
+			"books",
+			alacarte.HasMany(book,
+				func(author Author, book Book) bool { return book.AuthorID == author.ID },
+				func(author *Author, books []Book) { author.Books = books },
+				alacarte.WhereIDs("author_id", func(a Author) uint64 { return a.ID }),
+				alacarte.DependsOn("id", "books.author_id"),
+			),
+		)
 )
 
 func init() {
-	comment.AddRelation("book", alacarte.HasOne(book,
-		func(c Comment, b Book) bool { return c.BookID == b.ID },
-		func(c *Comment, b Book) { c.Book = &b },
-		alacarte.WhereIDs("id", func(c Comment) uint64 { return c.BookID }),
-	))
+	comment.AddRelation(
+		"book",
+		alacarte.HasOne(book,
+			func(c Comment, b Book) bool { return c.BookID == b.ID },
+			func(c *Comment, b Book) { c.Book = &b },
+			alacarte.WhereIDs("id", func(c Comment) uint64 { return c.BookID }),
+			alacarte.DependsOn(),
+		))
 }
 
 func TestBasicModelUsage(t *testing.T) {
@@ -175,5 +172,21 @@ func TestBasicModelRelation(t *testing.T) {
 		for _, book := range books {
 			assert.Equal(t, book.ID, book.Comments[0].Book.ID)
 		}
+	})
+
+	t.Run("automatically select fields required for relation", func(t *testing.T) {
+		authors, err := author.Query("books.name").
+			Collect(context.Background(), db)
+		require.NoError(t, err)
+
+		// Assert
+		require.Len(t, authors, 2)
+		require.Len(t, authors[0].Books, 2)
+		require.Len(t, authors[1].Books, 2)
+
+		require.NotEmpty(t, authors[0].ID)
+		require.NotEmpty(t, authors[0].Books[0].AuthorID)
+		require.NotEmpty(t, authors[0].Books[0].Name)
+		require.Empty(t, authors[0].Books[0].ID)
 	})
 }

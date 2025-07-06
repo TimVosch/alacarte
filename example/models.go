@@ -4,7 +4,7 @@ import (
 	"pollex.nl/alacarte"
 )
 
-var DBAuthor = alacarte.New[Author]("authors").
+var AuthorSchema = alacarte.New[Author]("authors").
 	AddField("id", alacarte.Col("id"), alacarte.Ptr(func(t *Author) any { return t.ID })).
 	AddField("name", alacarte.Col("name"), alacarte.Ptr(func(t *Author) any { return t.Name })).
 	AddRelation("books",
@@ -15,6 +15,7 @@ var DBAuthor = alacarte.New[Author]("authors").
 			func(parents []Author) alacarte.QueryMod {
 				return func(q alacarte.Q, table string) alacarte.Q { return q }
 			},
+			alacarte.DependsOn("id", "books.author_id"),
 		),
 	)
 

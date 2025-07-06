@@ -145,6 +145,11 @@ func (model ModelQuery[T]) Collect(ctx context.Context, db *sql.DB) ([]T, error)
 	// Apply runtime mods
 	q = applyMods(q, model.tableAlias, model.queryMods)
 
+	// Add relation field dependencies
+	for _, rel := range model.selectedRelations {
+		model = rel.ModelQueryMod(model)
+	}
+
 	// Collapse fields
 	var scans []RowScan[T]
 	for _, field := range model.selectedFields {

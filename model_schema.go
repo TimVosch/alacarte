@@ -42,7 +42,10 @@ func (schema *ModelSchema[T]) AddSimpleField(name string, ptr func(t *T) any) *M
 	return schema
 }
 
-func (schema *ModelSchema[T]) AddRelation(name string, relation Relation[T]) *ModelSchema[T] {
+func (schema *ModelSchema[T]) AddRelation(
+	name string,
+	relation Relation[T],
+) *ModelSchema[T] {
 	schema.Relations[name] = relation
 
 	return schema

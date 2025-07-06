@@ -70,6 +70,7 @@ var AuthorSchema = alacarte.New[Author]("authors").
 			func(author Author, book Book) bool { return book.AuthorID == author.ID },
 			func(author *Author, books []Book) { author.Books = books },
             alacarte.WhereIDs("author_id", func(a Author) uint64 { return a.ID }),
+            alacarte.DependsOn("id", "books.author_id"),
 		),
 	)
 
@@ -115,6 +116,8 @@ Creating a `Relation` requires three parameters:
     - Simple cases its looping over M and N and see if N.parent_id == M.id
 - `wherer func(parents []M) QueryMod`: a query modifier that adds a filter on the child query to only return rows
     related to the parents.
+- `depends ModelQueryModifier[M]`: used to add required fields to the model query using `Select`, to be able to 
+    resolve the relation.
 
 and will have return closures:
 
@@ -151,6 +154,7 @@ func HasMany[M, N any](
 	belongTogether func(M, N) bool,
 	assign func(*M, []N),
 	where func(parents []M) QueryMod,
+    depends []string,
 ) Relation[M] {
 
 // Example:
@@ -158,6 +162,7 @@ alacarte.HasMany(comment,
     func(book Book, comment Comment) bool { return comment.BookID == book.ID },
     func(book *Book, comments []Comment) { book.Comments = comments },
     alacarte.WhereIDs("book_id", func(book Book) uint64 { return book.ID }),
+    alacarte.DependsOn("id", "comments.book_id"),
 ),
 ```
 
